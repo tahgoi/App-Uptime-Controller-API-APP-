@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+httpx
+pydantic
+panel
+bokeh
+param
+pandas

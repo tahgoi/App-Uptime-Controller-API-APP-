@@ -1,0 +1,15 @@
+# Environments
+venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# App specific
+execution_log.csv
+
+# Docker
+.dockerignore
