@@ -1,0 +1,10 @@
+services:
+  process-dashboard:
+    build: .
+    container_name: dashboard_ui
+    ports:
+      - "8589:8589"
+    restart: unless-stopped
+    # Guarantees the container can route traffic to the Windows host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

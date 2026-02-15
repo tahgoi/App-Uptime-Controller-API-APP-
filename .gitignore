@@ -10,6 +10,7 @@ __pycache__/
 
 # App specific
 execution_log.csv
+exc_*
 
 # Docker
 .dockerignore

@@ -3,7 +3,6 @@
 # Linkedin: https://www.linkedin.com/in/jstaguan/
 
 import subprocess
-import time
 import httpx
 import os
 from fastapi import FastAPI, BackgroundTasks
@@ -13,52 +12,39 @@ app = FastAPI()
 
 class RunConfig(BaseModel):
     bat_path: str
+
+class CheckConfig(BaseModel):
     endpoint: str
-    delay_seconds: int
 
-def run_and_monitor(config: RunConfig):
-    # Extract directory and filename
-    bat_dir = os.path.dirname(config.bat_path)
-    bat_file = os.path.basename(config.bat_path)
-
+def execute_bat(bat_path: str):
+    print(f"Target Path: {bat_path}")
+    bat_dir = os.path.dirname(bat_path)
+    bat_file = os.path.basename(bat_path)
     try:
-        # Construct the command to open a NEW window
-        # start "Title" /d "Directory" cmd /k "filename"
-        launch_cmd = f'start "{bat_file}" /d "{bat_dir}" cmd /k "{bat_file}"'
-        
-        subprocess.Popen(launch_cmd, shell=True)
-        print(f"✅ New terminal opened for: {bat_file}")
+        # Launching the visible Windows terminal
+        cmd = f'start "{bat_file}" /d "{bat_dir}" cmd /k "{bat_file}"'
+        subprocess.Popen(cmd, shell=True)
+        print(f"✅ Executed: {bat_file}")
     except Exception as e:
-        print(f"❌ Failed to launch .bat: {e}")
-        return
-
-    # Wait for the app to warm up
-    print(f"🕒 Waiting {config.delay_seconds}s before checking {config.endpoint}...")
-    time.sleep(config.delay_seconds)
-
-    # Retry Loop
-    max_retries = 5
-    retry_interval = 10
-
-    with httpx.Client() as client:
-        for attempt in range(1, max_retries + 1):
-            try:
-                response = client.get(config.endpoint, timeout=5.0)
-                if response.status_code == 200:
-                    print(f"✨ SUCCESS: {bat_file} is active at {config.endpoint}")
-                    return
-            except httpx.RequestError:
-                print(f"🔄 Attempt {attempt}/5: {bat_file} not ready yet...")
-            
-            if attempt < max_retries:
-                time.sleep(retry_interval)
-
-    print(f"⚠️ ALERT: {bat_file} failed to respond after {max_retries} retries.")
+        print(f"❌ Execution failed: {e}")
 
 @app.post("/start-process")
 async def start_process(config: RunConfig, background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_and_monitor, config)
-    return {"message": "Instruction sent. Check new terminal window for logs."}
+    # Triggers the bat file in the background immediately
+    background_tasks.add_task(execute_bat, config.bat_path)
+    return {"status": "success", "message": f"Triggered {config.bat_path}"}
+
+@app.post("/check-endpoint")
+async def check_endpoint(config: CheckConfig):
+    # The Windows machine does the pinging locally!
+    try:
+        with httpx.Client() as client:
+            response = client.get(config.endpoint, timeout=5.0)
+            if response.status_code == 200:
+                return {"is_alive": True, "status_code": 200}
+            return {"is_alive": False, "status_code": response.status_code}
+    except Exception as e:
+        return {"is_alive": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
